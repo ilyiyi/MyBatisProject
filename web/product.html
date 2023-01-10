@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <!--    引入js 和 css-->
+    <script src="./js/axios-0.18.0.js"></script>
+    <script src="./js/vue.js"></script>
+    <script src="./element-ui/lib/index.js"></script>
+    <link rel="stylesheet" href="./element-ui/lib/theme-chalk/index.css">
+
+    <!--    引入样式-->
+    <style>
+        .el-table .warning-row {
+            background: oldlace;
+        }
+
+        .el-table .success-row {
+            background: #f0f9eb;
+        }
+    </style>
+</head>
+<body>
+
+
+<div id="app">
+    <!--        表单输入框-->
+    <el-form :inline="true" :model="queryParam" class="demo-form-inline">
+        <el-form-item label="商品名称">
+            <el-input v-model="queryParam.name" placeholder="请输入商品名称"></el-input>
+        </el-form-item>
+
+        </el-form-item>
+        <el-form-item>
+            <el-button type="primary" @click="onSubmit">查询</el-button>
+        </el-form-item>
+    </el-form>
+    <el-button @click="batchDel()" type="danger">批量删除</el-button>
+    <el-button @click="dialogVisible = true" type="primary">新增</el-button>
+    <!--        表格-->
+    <template>
+        <el-table
+                :data="tableData"
+                style="width: 100%"
+                :row-class-name="tableRowClassName"
+                @selection-change="handleSelectionChange"
+
+        >
+            <el-table-column
+                    type="selection"
+                    width="55">
+            </el-table-column>
+            <el-table-column
+                    type="index"
+                    prop="id"
+                    width="50">
+            </el-table-column>
+            <el-table-column
+                    prop="name"
+                    align="center"
+                    label="商品名称"
+            >
+            </el-table-column>
+            <el-table-column
+                    prop="price"
+                    align="center"
+                    label="价格"
+            >
+            </el-table-column>
+            <el-table-column
+                    prop="remark"
+                    align="center"
+                    label="备注">
+            </el-table-column>
+            <el-table-column
+                    prop="createName"
+                    align="center"
+                    label="创建人">
+            </el-table-column>
+            <el-table-column
+                    prop="createTime"
+                    align="center"
+                    label="创建时间">
+            </el-table-column>
+            <el-table-column
+                    prop="updateName"
+                    align="center"
+                    label="更新人">
+            </el-table-column>
+            <el-table-column
+                    prop="updateTime"
+                    align="center"
+                    label="更新时间">
+            </el-table-column>
+            <el-table-column
+                    fixed="right"
+                    label="操作">
+                <template slot-scope="scope">
+                    <el-button @click="updateProduct(scope.row)" type="primary">修改</el-button>
+                    <el-button @click="del(scope.row)" type="danger">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </template>
+    <div class="block">
+        <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="queryParam.currentPage"
+                :page-sizes="[5, 10, 15, 20]"
+                :page-size="queryParam.pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="queryParam.total">
+        </el-pagination>
+
+        <!--            新增对话框-->
+        <el-dialog
+                title="新增"
+                :visible.sync="dialogVisible"
+                width="30%"
+        >
+            <el-form :model="insertForm" status-icon :rules="rules" ref="insertForm" label-width="100px"
+                     class="demo-ruleForm">
+                <el-form-item label="商品名称" prop="name">
+                    <el-input type="text" v-model="insertForm.name" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="价格" prop="price">
+                    <el-input type="text" v-model="insertForm.price" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="备注" prop="age">
+                    <el-input
+
+                            type="textarea"
+                            :rows="2"
+                            placeholder="请输入内容"
+                            v-model="insertForm.remark">
+                    </el-input>
+
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+    <el-button @click="dialogVisible = false">取 消</el-button>
+    <el-button type="primary" @click="insert()">确 定</el-button>
+  </span>
+        </el-dialog>
+
+        <!--            编辑对话框-->
+        <el-dialog
+                title="编辑"
+                :visible.sync="updateDialogVisible"
+                width="30%"
+        >
+            <el-form :model="updateForm" status-icon :rules="rules" ref="updateForm" label-width="100px"
+                     class="demo-ruleForm">
+                <el-form-item label="商品id" prop="id">
+                    <el-input type="text" v-model="updateForm.id" autocomplete="off" :disabled="true"></el-input>
+                </el-form-item>
+                <el-form-item label="商品名称" prop="name">
+                    <el-input type="text" v-model="updateForm.name" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="价格" prop="price">
+                    <el-input type="text" v-model="updateForm.price" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="备注" prop="age">
+                    <el-input
+                            type="textarea"
+                            :rows="2"
+                            placeholder="请输入内容"
+                            v-model="updateForm.remark">
+                    </el-input>
+
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+    <el-button @click="updateDialogVisible = false">取 消</el-button>
+    <el-button type="primary" @click="updateSubmit()">确 定</el-button>
+  </span>
+        </el-dialog>
+    </div>
+</div>
+<script>
+    new Vue({
+        el: '#app',
+
+        methods: {
+
+            //删除方法
+            del(row) {
+                console.log(row);
+                console.log(row.id);
+                const obj = this
+                axios({
+                    method: 'delete',
+                    url: '/product',
+                    data: {
+                        isBatch: false,
+                        id: row.id
+                    }
+                }).then(res => {
+                    if (res.data) {
+                        //添加成功
+                        console.log('success')
+                        obj.listProduct()
+                    } else {
+                        console.error(res.data)
+                        alert('删除失败')
+                    }
+                });
+
+            },
+            //批量删除
+            batchDel() {
+                const obj = this
+                console.log(obj.multipleSelection)
+                let arr = obj.multipleSelection
+                let ids = []
+                arr.forEach(function (item) {
+                    ids.push(item.id)
+                })
+                console.log(ids)
+                axios({
+                    method: 'delete',
+                    url: '/product',
+                    data: {
+                        isBatch: true,
+                        ids: ids
+                    }
+                }).then(res => {
+                    if (res.data) {
+                        console.log('success')
+                        obj.listProduct()
+                    } else {
+                        console.error(res.data)
+                        alert('删除失败')
+                    }
+                })
+            },
+            //编辑方法
+            updateProduct(row) {
+                console.log(row);
+                var _this = this;
+                this.updateForm = row;
+                this.updateDialogVisible = true;
+            },
+
+
+            //弹框方法
+            submitForm(formName) {
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        alert('submit!');
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+            },
+            handleDelete(index, row) {
+                console.log(index, row);
+            },
+            setCurrentRow(row) {
+                console.log(row)
+            },
+
+            tableRowClassName({row, rowIndex}) {
+                if (rowIndex === 1) {
+                    return 'warning-row';
+                } else if (rowIndex === 3) {
+                    return 'success-row';
+                }
+                return '';
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+                console.log(this.multipleSelection)
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                const obj = this
+                obj.queryParam.pageSize = val
+                obj.queryParam.currentPage = 1
+                obj.listProduct()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                const obj = this
+                obj.queryParam.currentPage = val
+                obj.listProduct()
+            },
+            //新增数据
+            insert() {
+                const obj = this;
+                obj.dialogVisible = false
+
+                axios({
+                    method: 'post',
+                    url: '/product',
+                    data: obj.insertForm
+                }).then(res => {
+                    if (res.data) {
+                        //添加成功
+                        console.log('success')
+                        obj.listProduct()
+                    } else {
+                        console.error(res.data)
+                    }
+                    obj.insertForm = {
+                        name: '',
+                        remark: '',
+                        price: ''
+                    }
+                });
+            },
+            updateSubmit() {
+                const obj = this
+                obj.updateDialogVisible = false
+                axios({
+                    method: 'put',
+                    url: '/product',
+                    data: obj.updateForm
+                }).then(res => {
+                    if (res.data) {
+                        //添加成功
+                        console.log('success')
+                        obj.listProduct()
+                    } else {
+                        console.error(res.data)
+                        alert('更新失败')
+                    }
+                });
+            }
+            ,
+            //表单提交方法
+            onSubmit() {
+                console.log('submit!');
+                this.listProduct()
+            },
+
+            listProduct() {
+                const obj = this;
+                //发起ajax请求获取后台数据
+                axios({
+                    method: 'get',
+                    url: '/product',
+                    params: {
+                        currentPage: obj.queryParam.currentPage,
+                        pageSize: obj.queryParam.pageSize,
+                        name: obj.queryParam.name
+                    }
+                }).then(res => {
+                    obj.queryParam.currentPage = res.data.pageNum
+                    obj.queryParam.pageSize = res.data.pageSize
+                    obj.queryParam.total = res.data.total
+                    obj.tableData = res.data.list
+                });
+            }
+        },
+        data() {
+            return {
+                //编辑的 form
+                updateForm: {
+                    id: '',
+                    name: '',
+                    price: '',
+                    remark: ''
+                },
+                //新增的 form
+                insertForm: {
+                    name: '',
+                    price: '',
+                    remark: ''
+                },
+                ruleForm: {
+                    pass: '',
+                    checkPass: '',
+                    age: ''
+                },
+                rules: {},
+                //新增
+                dialogVisible: false,
+                //编辑
+                updateDialogVisible: false,
+
+                queryParam: {
+                    currentPage: 1,
+                    pageSize: 10,
+                    total: 0,
+                    name: ''
+                }
+                ,
+                multipleSelection: [],
+                tableData: []
+            }
+        },
+        mounted: function () {
+            const obj = this;
+            obj.listProduct()
+        }
+    })
+</script>
+</body>
+</html>
